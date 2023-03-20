@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Car Selling Website</title>
+	<link rel="stylesheet" type="text/css" href="../static/css/style.css">
+</head>
+<body>
+	{{if .}}
+	<header>
+		<h1>Car Selling Website</h1>
+		<nav>
+			<ul>
+				<li><a href="/">Home</a></li>
+				<li><a href="/">Cars</a></li>
+				{{if .Username }}
+					<li>{{ .Username }}</li>
+				{{else}}
+				<li><a href="/login">Login</a></li>
+				<li><a href="/register">Register</a></li>
+				{{ end }}
+				
+			</ul>
+		</nav>
+	</header>
+
+	<main>
+		<section class="search-section">
+			<h2>Search for Cars</h2>
+			<form action="/search" method="POST">
+				<input type="text" name="productName" placeholder="Search by name ">
+				<button type="submit">Search</button>
+			</form>
+            
+		</section>
+
+		<section class="cars-section">
+			<h2>Cars for Sale</h2>
+			<ul>
+                
+                    {{range .Products}}
+                    <li>
+                        
+                        <h3>{{.Car_name}}</h3>
+                        <p>{{.Details}}</p>
+                        <p>Price: {{.Price}}</p>
+                    </li>
+                    {{end}}
+                
+
+			</ul>
+		</section>
+	</main>
+
+	<footer>
+		<p>&copy; 2023 Car Selling Website</p>
+	</footer>
+	{{end}}
+</body>
+</html>
