@@ -33,6 +33,17 @@
             
 		</section>
 
+		<section class="filter-section">
+			<h2>Filter by Price</h2>
+			<form action="/filtred" method="post">
+				<label for="min-price">Minimum Price:</label>
+				<input type="number" id="min-price" name="minPrice" min="0">
+				<label for="max-price">Maximum Price:</label>
+				<input type="number" id="max-price"  name="maxPrice" min="0">
+				<button type="submit">Filter</button>
+			</form>
+		</section>
+
 		<section class="cars-section">
 			<h2>Cars for Sale</h2>
 			<ul>
