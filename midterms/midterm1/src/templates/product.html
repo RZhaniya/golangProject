@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Car Selling Website</title>
+	<link rel="stylesheet" type="text/css" href="../static/css/style.css">
+</head>
+<body>
+	<div>
+		
+		
+		<h3>{{ .Product.Car_name}}</h3>
+		<p>{{ .Product.Details}}</p>
+		<p>Price: {{ .Product.Price}}</p>
+		
+	</div>
+	<h2>Comments:</h2>
+	{{if .Comments}}
+		{{range .Comments}}
+		<div>
+			
+			<p> <b>{{.Name}}</b> :{{.Comment}}</p>
+		</div>
+			
+			
+		{{end}}
+	{{end}}
+</body>
+</html>
