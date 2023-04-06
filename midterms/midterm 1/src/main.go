@@ -8,12 +8,16 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/mux"
+
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/gorilla/mux"
 )
 
 type toIndexData struct {
 	Username string
 	Products []Product
+	UserId   int64
 }
 type Product struct {
 	Id       int
@@ -25,6 +29,8 @@ type Product struct {
 var database *sql.DB
 var toInData toIndexData
 var savUsername string
+var userid int64
+var tmpl template.Template
 
 type SearchData struct {
 	search     bool
@@ -38,9 +44,11 @@ func ProductsHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	products := getProductsByName("")
+
 	toInData := toIndexData{
 		Products: products,
 		Username: savUsername,
+		UserId:   userid,
 	}
 
 	var tmpl = template.Must(template.ParseFiles("./templates/index.html"))
@@ -65,6 +73,7 @@ func SearchPage(w http.ResponseWriter, r *http.Request) {
 	toInData := toIndexData{
 		Products: products,
 		Username: savUsername,
+		UserId:   userid,
 	}
 	tpl.ExecuteTemplate(w, "index.html", toInData)
 }
@@ -80,11 +89,13 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	fmt.Println("password:", password, "\npswdLength:", len(password))
 
-	stmt := "SELECT id FROM users WHERE username = ?"
-	db, err := sql.Open("mysql", "root:password@/world")
+	stmt := "SELECT userid FROM users WHERE name = ?"
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
 	row := db.QueryRow(stmt, username)
-	var uID int
-	err = row.Scan(&uID)
+
+	err = row.Scan(&userid)
+	print(userid)
+
 	if err != sql.ErrNoRows {
 		fmt.Println("username already exists, err:", err)
 		tpl.ExecuteTemplate(w, "registration.html", "username already taken")
@@ -92,7 +103,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// func (db *DB) Prepare(query string) (*Stmt, error)
 	var insertStmt *sql.Stmt
-	insertStmt, err = db.Prepare("INSERT INTO users (username, password) VALUES (?, ?);")
+	insertStmt, err = db.Prepare("INSERT INTO users (name, password) VALUES (?, ?);")
+
 	if err != nil {
 		fmt.Println("error preparing statement:", err)
 		tpl.ExecuteTemplate(w, "registration.html", "there was a problem registering account")
@@ -112,13 +124,16 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		tpl.ExecuteTemplate(w, "registration.html", "there was a problem registering account")
 		return
 	}
+	userid = lastIns
 	savUsername = username
+
+	// tpl.ExecuteTemplate(w, "index.html", userid)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	db, err := sql.Open("mysql", "root:password@/world")
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
 	if r.Method == "GET" {
 		tpl.ExecuteTemplate(w, "login.html", "")
 		return
@@ -145,7 +160,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func getProductsByName(name string) []Product {
-	db, err := sql.Open("mysql", "root:password@/world")
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
 	if err != nil {
 		log.Println(err)
 	}
@@ -237,7 +252,7 @@ func main() {
 
 	tpl, _ = template.ParseGlob("templates/*.html")
 
-	db, err := sql.Open("mysql", "root:password@/world")
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
 	if err != nil {
 		log.Println(err)
 	}
@@ -258,16 +273,10 @@ func main() {
 		{path: "/login", handler: loginHandler},
 		{path: "/filtred", handler: filtredProduct},
 	}
-
+	r := mux.NewRouter()
 	for _, route := range routes {
 		http.HandleFunc(route.path, route.handler)
 	}
-
-	products, err := getFilteredProducts(db, 50, 100)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(products)
 
 	fmt.Println("Server is listening...")
 	http.ListenAndServe(":8080", nil)

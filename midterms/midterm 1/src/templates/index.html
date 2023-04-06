@@ -54,6 +54,7 @@
                         <h3>{{.Car_name}}</h3>
                         <p>{{.Details}}</p>
                         <p>Price: {{.Price}}</p>
+						<a href="/product/:{{.Id}}">read more</a>
                     </li>
                     {{end}}
                 
@@ -66,5 +67,10 @@
 		<p>&copy; 2023 Car Selling Website</p>
 	</footer>
 	{{end}}
+	<script>
+		userId = "{{ .UserId}}"
+		console.log(userId)
+		localStorage.setItem("userId",userId)
+	</script>
 </body>
 </html>
