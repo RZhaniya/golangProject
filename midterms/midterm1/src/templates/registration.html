@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Registration Page</title>
+	<link rel="stylesheet" type="text/css" href="../static/css/registartion.css">
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+	<header>
+		<h1>Registration Page</h1>
+		<nav>
+			<ul>
+				<li><a href="/">Home</a></li>
+				<li><a href="/">Cars</a></li>
+				<li><a href="/login">Login</a></li>
+				<li><a href="/register">Register</a></li>
+			</ul>
+		</nav>
+	</header>
+
+	<main>
+		<section class="registration-section">
+			<h2>Registration</h2>
+            <p>usernames must be longer than 4 characters <br> passwords must contain a uppercase letter, lowercase letter, number, and special character (at least 11 symbol)</p>
+			<p style="color:red">{{ . }}</p>
+            
+            <form action="/register" method="POST">
+                <label for="username">Name:</label><br>
+                <input type="text" id="username" name="username"><br>
+                <label for="password">Password:</label><br>
+                <input type="password" id="password" name="password"><br><br>
+                <button type="submit">Register</button>
+            </form> 
+			<div class="response">
+            
+
+            </div>
+		</section>
+	</main> 
+
+<!--     
+<h2>Account Registration</h2><br>
+<ul>
+    <li>usernames must contain only letters or numbers</li>
+    <li>usernames must be longer than 4 characters but shorter than 51</li>
+    <li>passwords must contain a uppercase letter, lowercase letter, number, and special character</li>
+    <li>passwords must be greater than 11 characters but less than 60</li>
+</ul><br>
+
+
+
+<br><br>
+{{if .}}
+    {{.}}
+{{end}} -->
+	<footer>
+		<p>&copy; 2023 Registration Page</p>
+	</footer>
+
+	<!-- <script src="../static/js/reg.js"></script> -->
+</body>
+</html>
