@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"models"
-
 
 	"github.com/gorilla/mux"
 
@@ -32,11 +30,19 @@ var database *sql.DB
 var toInData toIndexData
 var savUsername string
 var userid int64
-var tmpl template.Template
+var tmpl *template.Template
 
 type SearchData struct {
 	search     bool
 	searchText string
+}
+type Comment struct {
+	Name    string
+	Comment string
+}
+type ProductPage struct {
+	Product  Product
+	Comments []Comment
 }
 
 func ProductsHandle(w http.ResponseWriter, r *http.Request) {
@@ -53,8 +59,8 @@ func ProductsHandle(w http.ResponseWriter, r *http.Request) {
 		UserId:   userid,
 	}
 
-	var tmpl = template.Must(template.ParseFiles("./templates/index.html"))
-	nerr := tmpl.Execute(w, toInData)
+	// tmpl = template.Must(template.ParseFiles("./templates/*"))
+	nerr := tpl.Execute(w, toInData)
 
 	if nerr != nil {
 		log.Println(nerr)
@@ -96,7 +102,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	row := db.QueryRow(stmt, username)
 
 	err = row.Scan(&userid)
-	print(userid)
 
 	if err != sql.ErrNoRows {
 		fmt.Println("username already exists, err:", err)
@@ -247,11 +252,53 @@ func getFilteredProducts(db *sql.DB, minPrice, maxPrice int) ([]Product, error) 
 
 	return products, nil
 }
+func productPage(w http.ResponseWriter, r *http.Request) {
+	// w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	// fmt.Println(params["id"])
+	productId := params["id"]
+
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
+	if err != nil {
+		log.Println(err)
+	}
+	defer db.Close()
+
+	result := db.QueryRow("SELECT * FROM products WHERE id = ?", productId)
+	var p Product
+	err = result.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price)
+	if err != nil {
+		log.Println(err)
+	}
+
+	res, err2 := db.Query("SELECT u.name, c.comment FROM comments c join users u on u.userid=c.userid WHERE productId = ?", productId)
+	if err2 != nil {
+		log.Println(err2)
+	}
+	fmt.Println(res)
+
+	comments := []Comment{}
+
+	for res.Next() {
+		var c Comment
+		err = res.Scan(&c.Name, &c.Comment)
+		if err != nil {
+			log.Println(err)
+		}
+		comments = append(comments, c)
+	}
+	data := ProductPage{
+		Product:  p,
+		Comments: comments,
+	}
+	fmt.Println(data)
+	tpl.ExecuteTemplate(w, "product.html", data)
+	// json.NewEncoder(w).Encode(&p)
+}
 
 var tpl *template.Template
 
 func main() {
-
 	tpl, _ = template.ParseGlob("templates/*.html")
 
 	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
@@ -261,8 +308,6 @@ func main() {
 	defer db.Close()
 
 	database = db
-
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	routes := []struct {
 		path    string
@@ -274,12 +319,22 @@ func main() {
 		{path: "/register", handler: registerHandler},
 		{path: "/login", handler: loginHandler},
 		{path: "/filtred", handler: filtredProduct},
+		{path: "/product:{id}", handler: productPage},
 	}
 	r := mux.NewRouter()
+	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+	r.PathPrefix("/static/").Handler(s)
+	// r.HandleFunc("/books/{id}", getBook).Methods("GET")
+	// r.HandleFunc("/books", createBook).Methods("POST")
+	// r.HandleFunc("/books/{id}", updateBook).Methods("PUT")
+	// r.HandleFunc("/books/{id}", deleteBook).Methods("DELETE")
+
 	for _, route := range routes {
-		http.HandleFunc(route.path, route.handler)
+		r.HandleFunc(route.path, route.handler).Methods("GET")
 	}
 
+	log.Fatal(http.ListenAndServe(":8080", r))
+
 	fmt.Println("Server is listening...")
-	http.ListenAndServe(":8080", nil)
+	// http.ListenAndServe(":8080", nil)
 }
