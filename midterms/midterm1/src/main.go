@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-humble/locstor"
 	"github.com/gorilla/mux"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -95,7 +96,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	fmt.Println("password:", password, "\npswdLength:", len(password))
+	// fmt.Println("password:", password, "\npswdLength:", len(password))
 
 	stmt := "SELECT userid FROM users WHERE name = ?"
 	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
@@ -133,8 +134,13 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	userid = lastIns
 	savUsername = username
+	products := getProductsByName("")
 
-	// tpl.ExecuteTemplate(w, "index.html", userid)
+	data := toIndexData{
+		Username: savUsername,
+		UserId:   userid,
+		Products: products}
+	tpl.ExecuteTemplate(w, "index.html", data)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 }
@@ -149,9 +155,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	var pass string
-	stmt := "SELECT password FROM users WHERE username = ?"
+	stmt := "SELECT userid, password FROM users WHERE name = ?"
 	row := db.QueryRow(stmt, username)
-	err = row.Scan(&pass)
+	err = row.Scan(&userid, &pass)
 	if err != nil {
 		fmt.Println("error selecting Hash in db by Username")
 		tpl.ExecuteTemplate(w, "login.html", "check username and password")
@@ -159,7 +165,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if password == pass {
-		savUsername = username
+		products := getProductsByName("")
+
+		data := toIndexData{
+			Username: username,
+			UserId:   userid,
+			Products: products}
+		tpl.ExecuteTemplate(w, "index.html", data)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -252,15 +264,10 @@ func getFilteredProducts(db *sql.DB, minPrice, maxPrice int) ([]Product, error) 
 
 	return products, nil
 }
-func productPage(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	// fmt.Println(params["id"])
-	productId := params["id"]
-
+func getProduct(productId string) (Product, error) {
 	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
 	if err != nil {
-		log.Println(err)
+		return Product{}, err
 	}
 	defer db.Close()
 
@@ -268,37 +275,131 @@ func productPage(w http.ResponseWriter, r *http.Request) {
 	var p Product
 	err = result.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price)
 	if err != nil {
-		log.Println(err)
+		return Product{}, err
 	}
 
-	res, err2 := db.Query("SELECT u.name, c.comment FROM comments c join users u on u.userid=c.userid WHERE productId = ?", productId)
-	if err2 != nil {
-		log.Println(err2)
+	return p, nil
+}
+
+func getComments(productId string) ([]Comment, error) {
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
+	if err != nil {
+		return []Comment{}, err
 	}
-	fmt.Println(res)
+	defer db.Close()
+
+	res, err := db.Query("SELECT u.name, c.comment FROM comments c join users u on u.userid=c.userid WHERE productId = ?", productId)
+	if err != nil {
+		return []Comment{}, err
+	}
 
 	comments := []Comment{}
-
 	for res.Next() {
 		var c Comment
 		err = res.Scan(&c.Name, &c.Comment)
 		if err != nil {
-			log.Println(err)
+			return []Comment{}, err
 		}
 		comments = append(comments, c)
 	}
+
+	return comments, nil
+}
+
+func renderProductPage(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	productId := params["id"]
+
+	p, err := getProduct(productId)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to retrieve product", http.StatusInternalServerError)
+		return
+	}
+
+	comments, err := getComments(productId)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+		return
+	}
+
 	data := ProductPage{
 		Product:  p,
 		Comments: comments,
 	}
-	fmt.Println(data)
+
 	tpl.ExecuteTemplate(w, "product.html", data)
-	// json.NewEncoder(w).Encode(&p)
+}
+
+func sendComment(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("inside")
+	var result string
+	if r.Method == "GET" {
+		tpl.ExecuteTemplate(w, "product.html", nil)
+		return
+	}
+
+	commentText := r.FormValue("commentText")
+	fmt.Println(commentText)
+	if len(commentText) == 0 {
+		result = "write some comment"
+		tpl.ExecuteTemplate(w, "product.html", result)
+		return
+	} else {
+
+		userId := r.FormValue("userId")
+		productId := r.FormValue("productId")
+		var insertStmt *sql.Stmt
+		insertStmt, err2 := database.Prepare("INSERT INTO comments (productid,userid, comment) VALUES (?, ?,?);")
+		// fmt.Println(userId)
+		if err2 != nil {
+			fmt.Println("error preparing statement:", err2)
+			tpl.ExecuteTemplate(w, "index.html", "there was a problem registering account")
+			return
+		}
+		defer insertStmt.Close()
+		var result sql.Result
+
+		result, err2 = insertStmt.Exec(productId, userId, commentText)
+		lastIns, _ := result.LastInsertId()
+		fmt.Println("lastIns comment:", lastIns)
+		if err2 != nil {
+			fmt.Println("error inserting new user")
+			tpl.ExecuteTemplate(w, "registration.html", "there was a problem registering account")
+			return
+		}
+		p, err := getProduct(productId)
+		fmt.Println(productId)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Failed to retrieve product", http.StatusInternalServerError)
+			return
+		}
+
+		comments, err := getComments(productId)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
+			return
+		}
+
+		data := ProductPage{
+			Product:  p,
+			Comments: comments,
+		}
+
+		http.Redirect(w, r, "/product:"+productId, http.StatusSeeOther)
+		tpl.ExecuteTemplate(w, "product.html", data)
+	}
 }
 
 var tpl *template.Template
 
 func main() {
+	if err := locstor.SetItem("userId", "1"); err != nil {
+		fmt.Println(err)
+	}
 	tpl, _ = template.ParseGlob("templates/*.html")
 
 	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
@@ -319,7 +420,8 @@ func main() {
 		{path: "/register", handler: registerHandler},
 		{path: "/login", handler: loginHandler},
 		{path: "/filtred", handler: filtredProduct},
-		{path: "/product:{id}", handler: productPage},
+		{path: "/product:{id}", handler: renderProductPage},
+		{path: "/sendComment", handler: sendComment},
 	}
 	r := mux.NewRouter()
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
@@ -330,7 +432,7 @@ func main() {
 	// r.HandleFunc("/books/{id}", deleteBook).Methods("DELETE")
 
 	for _, route := range routes {
-		r.HandleFunc(route.path, route.handler).Methods("GET")
+		r.HandleFunc(route.path, route.handler)
 	}
 
 	log.Fatal(http.ListenAndServe(":8080", r))
