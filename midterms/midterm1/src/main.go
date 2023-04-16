@@ -25,6 +25,7 @@ type Product struct {
 	Car_name string
 	Details  string
 	Price    int
+	Rate     string
 }
 
 var database *sql.DB
@@ -193,7 +194,7 @@ func getProductsByName(name string) []Product {
 	products := []Product{}
 	for result.Next() {
 		var p Product
-		err = result.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price)
+		err = result.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price, &p.Rate)
 		if err != nil {
 			log.Println(err)
 		}
@@ -236,7 +237,7 @@ func filtredProduct(w http.ResponseWriter, r *http.Request) {
 
 func getFilteredProducts(db *sql.DB, minPrice, maxPrice int) ([]Product, error) {
 	// Prepare the SQL query
-	query := "SELECT id, car_name,details, price FROM products WHERE price >= ? AND price <= ?"
+	query := "SELECT id, car_name,details, price,rate FROM products WHERE price >= ? AND price <= ?"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, err
@@ -256,7 +257,7 @@ func getFilteredProducts(db *sql.DB, minPrice, maxPrice int) ([]Product, error) 
 	// Iterate over the rows
 	for rows.Next() {
 		var p Product
-		if err := rows.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price); err != nil {
+		if err := rows.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price, &p.Rate); err != nil {
 			return nil, err
 		}
 		products = append(products, p)
@@ -273,7 +274,7 @@ func getProduct(productId string) (Product, error) {
 
 	result := db.QueryRow("SELECT * FROM products WHERE id = ?", productId)
 	var p Product
-	err = result.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price)
+	err = result.Scan(&p.Id, &p.Car_name, &p.Details, &p.Price, &p.Rate)
 	if err != nil {
 		return Product{}, err
 	}
@@ -393,6 +394,32 @@ func sendComment(w http.ResponseWriter, r *http.Request) {
 		tpl.ExecuteTemplate(w, "product.html", data)
 	}
 }
+func sendRating(w http.ResponseWriter, r *http.Request) {
+
+	r.ParseForm() // Parses the request body
+	rating := r.Form.Get("rating")
+	productId := r.Form.Get("productId")
+	userId := r.Form.Get("userId") // x will be "" if parameter is not set
+	fmt.Println(rating + " " + productId + " " + userId)
+
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
+
+	var insertStmt *sql.Stmt
+	insertStmt, err = db.Prepare("INSERT INTO ratings (rate, productId,userId) VALUES (?, ?,?);")
+	if err != nil {
+		fmt.Println("error preparing statement:", err)
+		return
+	}
+	defer insertStmt.Close()
+	var result sql.Result
+	result, err = insertStmt.Exec(rating, productId, userid)
+	if err != nil {
+		fmt.Println("error preparing statement:", err)
+		return
+	}
+	lastIns, _ := result.LastInsertId()
+	fmt.Print(lastIns)
+}
 
 var tpl *template.Template
 
@@ -422,6 +449,7 @@ func main() {
 		{path: "/filtred", handler: filtredProduct},
 		{path: "/product:{id}", handler: renderProductPage},
 		{path: "/sendComment", handler: sendComment},
+		{path: "/ratings", handler: sendRating},
 	}
 	r := mux.NewRouter()
 	s := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
