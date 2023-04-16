@@ -2,15 +2,17 @@
 <html>
 <head>
 	<title>Car Selling Website</title>
-	<link rel="stylesheet" type="text/css" href="../static/css/style.css">
+	<link rel="stylesheet" type="text/css" href="../static/css/product.css">
 </head>
 <body>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 	<div>
 		
 		
 		<h3>{{ .Product.Car_name}}</h3>
 		<p>{{ .Product.Details}}</p>
 		<p>Price: {{ .Product.Price}}</p>
+		
 		
 	</div>
 	
@@ -32,13 +34,78 @@
 			
 		{{end}}
 	{{end}}
+	<div class="ratings-wrapper">
+		<p>Current rating {{.Product.Rate}}</p>
+		<div  class="ratings">
+		   <span data-rating="5">★</span>
+		   <span data-rating="4">★</span>
+		   <span data-rating="3">★</span>
+		   <span data-rating="2">★</span>
+		   <span data-rating="1">★</span>
+		</div>
+	 </div>
 <script>
 	userId = localStorage.getItem("userId")
 	productId = document.URL.split(":")[3]
-	
+	productRatings = "{{.Product.Rate}}"
+	console.log("rate: "+productRatings)
 	document.getElementById("userId").value = userId;
 	document.getElementById("productId").value =productId;
-</script>
+
+	// rating system
+	let stars = document.querySelectorAll(".ratings span");
+	let products = document.querySelectorAll(".ratings");
+	let ratings = [];
+	// existense reting 
+	let stararr = products.children;
+
+	// let  = Array.from(products.child).reverse();
+	// reverse[2]
+	// stars[5- Math.round(productRatings)].setAttribute("data-clicked","true")
 	
+	for(let star of stars){
+	star.addEventListener("click", function(){
+		console.log("clicked ")
+		let children = 	star.parentElement.children;
+		for(let child of children){
+			if(child.getAttribute("data-clicked")){
+				return false;	
+			}
+		}
+		
+		this.setAttribute("data-clicked","true");
+		let rating = this.dataset.rating;
+		let data = {
+			"rating": rating,
+			"productId": productId,
+			"userId":userId,
+		}
+		ratings.push(data);
+		//   localStorage.setItem("rating", JSON.stringify(ratings));
+		console.log(data)
+		$.post("/ratings", data, (data, status) => {
+			
+			});
+	});
+}
+
+// if(localStorage.getItem("rating")){
+//    ratings = JSON.parse(localStorage.getItem("rating"));
+//    for(let rating of ratings){
+//       for(let product of products){
+//          if(product.dataset.productid == rating["product-id"]){
+//             let reverse = Array.from(product.children).reverse();
+//             let index = parseInt(rating["rating"]) - 1;
+//             reverse[index].setAttribute("data-clicked", "true");
+//          }
+//       }
+//    }
+// }
+</script>
+<style>
+	
+
+
+</style>
 </body>
 </html>
