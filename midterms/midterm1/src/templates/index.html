@@ -33,7 +33,7 @@
 			</form>
             
 		</section>
-
+		
 		<section class="filter-section">
 			<h2>Filter by Price</h2>
 			<form action="/filtred" method="post">
@@ -56,7 +56,11 @@
 						Rate: <span>{{.Rate}}</span>
                         <p>{{.Details}}</p>
                         <p>Price: {{.Price}}</p>
-						<a href="/product:{{.Id}}">read more</a>
+						<form action="/product:{{ .Id}}" method="post">
+							<input type="text" name="userId" class="userId" style="display: none;">
+							<input type="submit" value="read more"> 
+						</form>
+						
                     </li>
                     {{end}}
                 
@@ -73,6 +77,11 @@
 		userId = "{{ .UserId}}"
 		console.log("userid", userId)
 		localStorage.setItem("userId",userId)
+		let pr = document.querySelectorAll(".userId");
+		console.log(pr.length)
+		for(let p of pr){
+		p.value=userId
+	}
 	</script>
 </body>
 </html>

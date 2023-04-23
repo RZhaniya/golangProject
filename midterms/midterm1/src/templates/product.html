@@ -35,6 +35,7 @@
 		{{end}}
 	{{end}}
 	<div class="ratings-wrapper">
+		
 		<p>Current rating {{.Product.Rate}}</p>
 		<div  class="ratings">
 		   <span data-rating="5">★</span>
@@ -62,7 +63,15 @@
 	// let  = Array.from(products.child).reverse();
 	// reverse[2]
 	// stars[5- Math.round(productRatings)].setAttribute("data-clicked","true")
+	let rate ="{{ .Rate}}"
+	console.log(rate)
+	if (rate){
+		
+		stars[5-rate].setAttribute("data-clicked","true");
 	
+	}
+	
+	// stars[1].setAttribute("data-clicked","true");
 	for(let star of stars){
 	star.addEventListener("click", function(){
 		console.log("clicked ")
