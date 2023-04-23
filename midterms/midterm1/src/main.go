@@ -45,6 +45,7 @@ type Comment struct {
 type ProductPage struct {
 	Product  Product
 	Comments []Comment
+	Rate     string
 }
 
 func ProductsHandle(w http.ResponseWriter, r *http.Request) {
@@ -186,7 +187,7 @@ func getProductsByName(name string) []Product {
 	}
 	defer db.Close()
 
-	result, err := db.Query("SELECT * FROM products WHERE car_name LIKE ?;", "%"+name+"%")
+	result, err := db.Query("SELECT * FROM products WHERE car_name LIKE ? ORDER by rating DESC;;", "%"+name+"%")
 	if err != nil {
 		log.Println(err)
 	}
@@ -237,7 +238,7 @@ func filtredProduct(w http.ResponseWriter, r *http.Request) {
 
 func getFilteredProducts(db *sql.DB, minPrice, maxPrice int) ([]Product, error) {
 	// Prepare the SQL query
-	query := "SELECT id, car_name,details, price,rate FROM products WHERE price >= ? AND price <= ?"
+	query := "SELECT id, car_name,details, price,rating FROM products WHERE price >= ? AND price <= ? ORDER by rating DESC;"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, err
@@ -310,6 +311,7 @@ func getComments(productId string) ([]Comment, error) {
 func renderProductPage(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	productId := params["id"]
+	userId := r.FormValue("userId")
 
 	p, err := getProduct(productId)
 	if err != nil {
@@ -324,10 +326,22 @@ func renderProductPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to retrieve comments", http.StatusInternalServerError)
 		return
 	}
+	var rate string
+	db, err := sql.Open("mysql", "root:@(localhost:3306)/world")
+	if err != nil {
+		fmt.Print(err)
+	}
+	defer db.Close()
 
+	stmt := "SELECT rate FROM ratings WHERE productId = ? and userId=?"
+	row := db.QueryRow(stmt, productId, userId)
+	err = row.Scan(&rate)
+
+	fmt.Println(rate)
 	data := ProductPage{
 		Product:  p,
 		Comments: comments,
+		Rate:     rate,
 	}
 
 	tpl.ExecuteTemplate(w, "product.html", data)
