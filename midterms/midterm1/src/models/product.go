@@ -5,4 +5,5 @@ type Product struct {
 	Car_name string
 	Details  string
 	Price    int
+	Rate     string
 }
