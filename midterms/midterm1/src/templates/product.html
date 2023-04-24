@@ -21,7 +21,7 @@
 		<input type="text" id="userId" name="userId" style="display: none;">
 		<input type="text" id="productId" name="productId" style="display: none;">
 
-		<button type="submit">Send</button>
+		<button type="submit" id="submit">Send</button>
 	</form>
 	<h2>Comments:</h2>
 	{{if .Comments}}
@@ -46,7 +46,9 @@
 		</div>
 	 </div>
 <script>
+	
 	userId = localStorage.getItem("userId")
+	console.log("userId"+ userId)
 	productId = document.URL.split(":")[3]
 	productRatings = "{{.Product.Rate}}"
 	console.log("rate: "+productRatings)
@@ -75,6 +77,7 @@
 	for(let star of stars){
 	star.addEventListener("click", function(){
 		console.log("clicked ")
+		stars.disabled = true;
 		let children = 	star.parentElement.children;
 		for(let child of children){
 			if(child.getAttribute("data-clicked")){
